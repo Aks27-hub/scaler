@@ -1,0 +1,44 @@
+aname: autonomous-traffic-control
+version: "1.0.0"
+description: "Multi-agent traffic intersection environment for RL"
+api_version: "1.0"
+
+environment:
+  class: TrafficEnv
+  module: traffic_env
+
+observation_space:
+  type: dict
+  fields:
+    cars_per_lane:
+      type: array
+      dtype: int
+    wait_time_per_lane:
+      type: array
+      dtype: float
+    current_signal:
+      type: string
+      enum: ["NS", "EW"]
+    signal_timer:
+      type: int
+    emergency_present:
+      type: bool
+    emergency_lane:
+      type: string
+      nullable: true
+
+action_space:
+  type: discrete
+  n: 3
+  labels: ["hold", "switch", "emergency_override"]
+
+tasks:
+  - id: easy
+    module: easy_task
+    class: EasyTask
+  - id: medium
+    module: medium_task
+    class: MediumTask
+  - id: hard
+    module: hard_task
+    class: HardTask
