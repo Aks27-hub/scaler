@@ -11,10 +11,14 @@ class EasyTask:
     def get_config(self):
         return self.config
 
+    def grade(self, trajectory):
+        return grade_easy(trajectory)
+
 
 def _strict_unit_interval(score: float) -> float:
-    eps = 1e-6
-    return min(1.0 - eps, max(eps, score))
+    low = 0.06
+    high = 0.94
+    return min(high, max(low, score))
 
 
 def grade_easy(trajectory):
@@ -33,3 +37,7 @@ def grade_easy(trajectory):
         return _strict_unit_interval(0.4)
     else:
         return _strict_unit_interval(0.0)
+
+
+def grade(trajectory):
+    return grade_easy(trajectory)

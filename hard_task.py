@@ -12,10 +12,14 @@ class HardTask:
     def get_config(self):
         return self.config
 
+    def grade(self, trajectory):
+        return grade_hard(trajectory)
+
 
 def _strict_unit_interval(score: float) -> float:
-    eps = 1e-6
-    return min(1.0 - eps, max(eps, score))
+    low = 0.06
+    high = 0.94
+    return min(high, max(low, score))
 
 
 def grade_hard(trajectory):
@@ -38,3 +42,7 @@ def grade_hard(trajectory):
 
     final = base_score + emergency_bonus + emergency_penalty
     return _strict_unit_interval(final)
+
+
+def grade(trajectory):
+    return grade_hard(trajectory)
