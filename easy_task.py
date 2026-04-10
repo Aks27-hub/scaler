@@ -11,19 +11,25 @@ class EasyTask:
     def get_config(self):
         return self.config
 
+
+def _strict_unit_interval(score: float) -> float:
+    eps = 1e-6
+    return min(1.0 - eps, max(eps, score))
+
+
 def grade_easy(trajectory):
     if not trajectory:
-        return 0.0
+        return _strict_unit_interval(0.0)
     info = trajectory[-1].get("info", {})
     waits = info.get("all_cars_wait_times", [])
     if not waits:
-        return 1.0  # Optional logic handling if no cars arrived
+        return _strict_unit_interval(1.0)
     avg_wait = sum(waits) / len(waits)
     if avg_wait < 5.0:
-        return 1.0
+        return _strict_unit_interval(1.0)
     elif avg_wait < 10.0:
-        return 0.7
+        return _strict_unit_interval(0.7)
     elif avg_wait < 20.0:
-        return 0.4
+        return _strict_unit_interval(0.4)
     else:
-        return 0.0
+        return _strict_unit_interval(0.0)
