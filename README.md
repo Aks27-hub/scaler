@@ -1,3 +1,15 @@
+---
+title: Autonomous Traffic Control
+emoji: "🚦"
+colorFrom: red
+colorTo: blue
+sdk: docker
+sdk_version: "latest"
+python_version: "3.11"
+app_file: app.py
+pinned: false
+---
+
 # Autonomous Traffic Control System
 
 ## 1. Problem Description
