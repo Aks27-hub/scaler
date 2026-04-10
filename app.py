@@ -1,8 +1,6 @@
-from typing import Optional
+from typing import Any, Optional
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-
+from fastapi import FastAPI
 from traffic_env import TrafficEnv
 from models import TrafficState, TrafficAction, StepResult
 from easy_task import EasyTask
@@ -13,11 +11,6 @@ app = FastAPI()
 env = TrafficEnv() # Single global env instance
 
 
-class ResetRequest(BaseModel):
-    task_id: Optional[str] = None
-    seed: Optional[int] = None
-
-
 TASKS = {
     "easy": EasyTask,
     "medium": MediumTask,
@@ -25,16 +18,20 @@ TASKS = {
 }
 
 @app.post("/reset", response_model=TrafficState)
-def reset(payload: Optional[ResetRequest] = None):
+def reset(payload: Optional[dict[str, Any]] = None):
     global env
-    if payload and payload.task_id:
-        task_cls = TASKS.get(payload.task_id)
-        if task_cls is None:
-            raise HTTPException(status_code=400, detail=f"Unknown task_id: {payload.task_id}")
-        config = task_cls().get_config()
-        if payload.seed is not None:
-            config["random_seed"] = payload.seed
-        env = TrafficEnv(config)
+    if payload:
+        task_key = payload.get("task_id") or payload.get("task") or payload.get("id")
+        if isinstance(task_key, int):
+            task_key = ["easy", "medium", "hard"][task_key] if 0 <= task_key <= 2 else None
+
+        task_cls = TASKS.get(str(task_key)) if task_key is not None else None
+        if task_cls is not None:
+            config = task_cls().get_config()
+            seed = payload.get("seed")
+            if isinstance(seed, int):
+                config["random_seed"] = seed
+            env = TrafficEnv(config)
 
     state = env.reset()
     return state
