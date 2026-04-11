@@ -5,26 +5,49 @@ class MediumTask:
             "arrival_rate": [0.6, 0.2, 0.5, 0.3],
             "no_emergency": True,
             "max_steps": 200,
-            "random_seed": 42
+            "random_seed": 42,
         }
 
     def get_config(self):
         return self.config
 
-    def grade(self, trajectory):
-        return grade_medium(trajectory)
+    def grade(self, *args, **kwargs):
+        return grade_medium(*args, **kwargs)
 
 
 def _strict_unit_interval(score: float) -> float:
     low = 0.06
     high = 0.94
-    return min(high, max(low, score))
+    try:
+        numeric = float(score)
+    except Exception:
+        numeric = 0.5
+    return min(high, max(low, numeric))
 
 
-def grade_medium(trajectory):
-    if not trajectory:
+def _extract_trajectory(*args, **kwargs):
+    if "trajectory" in kwargs:
+        return kwargs.get("trajectory")
+    if args:
+        first = args[0]
+        if isinstance(first, dict):
+            if "trajectory" in first:
+                return first.get("trajectory")
+            if "episodes" in first:
+                episodes = first.get("episodes")
+                if isinstance(episodes, list) and episodes:
+                    return episodes[-1]
+        return first
+    return None
+
+
+def grade_medium(*args, **kwargs):
+    trajectory = _extract_trajectory(*args, **kwargs)
+    if not isinstance(trajectory, list) or not trajectory:
         return _strict_unit_interval(0.0)
-    info = trajectory[-1].get("info", {})
+
+    last = trajectory[-1] if isinstance(trajectory[-1], dict) else {}
+    info = last.get("info", {}) if isinstance(last, dict) else {}
     arrived = info.get("total_cars_arrived", 1)
     if arrived == 0:
         arrived = 1
@@ -45,5 +68,5 @@ def grade_medium(trajectory):
     return _strict_unit_interval(score)
 
 
-def grade(trajectory):
-    return grade_medium(trajectory)
+def grade(*args, **kwargs):
+    return grade_medium(*args, **kwargs)

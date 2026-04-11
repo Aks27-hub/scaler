@@ -6,26 +6,49 @@ class HardTask:
             "emergency_prob": 0.05,
             "no_emergency": False,
             "max_steps": 300,
-            "random_seed": 42
+            "random_seed": 42,
         }
 
     def get_config(self):
         return self.config
 
-    def grade(self, trajectory):
-        return grade_hard(trajectory)
+    def grade(self, *args, **kwargs):
+        return grade_hard(*args, **kwargs)
 
 
 def _strict_unit_interval(score: float) -> float:
     low = 0.06
     high = 0.94
-    return min(high, max(low, score))
+    try:
+        numeric = float(score)
+    except Exception:
+        numeric = 0.5
+    return min(high, max(low, numeric))
 
 
-def grade_hard(trajectory):
-    if not trajectory:
+def _extract_trajectory(*args, **kwargs):
+    if "trajectory" in kwargs:
+        return kwargs.get("trajectory")
+    if args:
+        first = args[0]
+        if isinstance(first, dict):
+            if "trajectory" in first:
+                return first.get("trajectory")
+            if "episodes" in first:
+                episodes = first.get("episodes")
+                if isinstance(episodes, list) and episodes:
+                    return episodes[-1]
+        return first
+    return None
+
+
+def grade_hard(*args, **kwargs):
+    trajectory = _extract_trajectory(*args, **kwargs)
+    if not isinstance(trajectory, list) or not trajectory:
         return _strict_unit_interval(0.0)
-    info = trajectory[-1].get("info", {})
+
+    last = trajectory[-1] if isinstance(trajectory[-1], dict) else {}
+    info = last.get("info", {}) if isinstance(last, dict) else {}
     arrived = info.get("total_cars_arrived", 1)
     if arrived == 0:
         arrived = 1
@@ -36,7 +59,6 @@ def grade_hard(trajectory):
 
     total_emergencies = info.get("total_emergencies_arrived", 0)
     cleared_under_5 = info.get("emergencies_cleared_under_5", 0)
-
     emergency_bonus = 0.2 if (total_emergencies > 0 and cleared_under_5 == total_emergencies) else 0.0
     emergency_penalty = -0.3 if info.get("emergency_waited_over_10", False) else 0.0
 
@@ -44,5 +66,5 @@ def grade_hard(trajectory):
     return _strict_unit_interval(final)
 
 
-def grade(trajectory):
-    return grade_hard(trajectory)
+def grade(*args, **kwargs):
+    return grade_hard(*args, **kwargs)
