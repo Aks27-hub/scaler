@@ -13,12 +13,14 @@ class HardTask:
         return self.config
 
     def grade(self, *args, **kwargs):
-        return grade_hard(*args, **kwargs)
+        score = grade_hard(*args, **kwargs)
+        # Ensure score is strictly between 0 and 1 (platform requirement)
+        return max(0.01, min(0.99, float(score)))
 
 
 def _strict_unit_interval(score: float) -> float:
-    low = 0.06
-    high = 0.94
+    low = 0.01
+    high = 0.99
     try:
         numeric = float(score)
     except Exception:
