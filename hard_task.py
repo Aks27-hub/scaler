@@ -1,3 +1,6 @@
+import math
+
+
 class HardTask:
     def __init__(self):
         self.config = {
@@ -25,22 +28,40 @@ def _strict_unit_interval(score: float) -> float:
         numeric = float(score)
     except Exception:
         numeric = 0.5
+    if not math.isfinite(numeric):
+        numeric = 0.5
     return min(high, max(low, numeric))
+
+
+def _safe_float(value, default=0.0):
+    try:
+        numeric = float(value)
+    except Exception:
+        return float(default)
+    if not math.isfinite(numeric):
+        return float(default)
+    return numeric
 
 
 def _extract_trajectory(*args, **kwargs):
     if "trajectory" in kwargs:
         return kwargs.get("trajectory")
+    if "episodes" in kwargs:
+        episodes = kwargs.get("episodes")
+        if isinstance(episodes, list) and episodes:
+            return episodes[-1]
     if args:
-        first = args[0]
-        if isinstance(first, dict):
-            if "trajectory" in first:
-                return first.get("trajectory")
-            if "episodes" in first:
-                episodes = first.get("episodes")
-                if isinstance(episodes, list) and episodes:
-                    return episodes[-1]
-        return first
+        for candidate in args:
+            if isinstance(candidate, dict):
+                if "trajectory" in candidate:
+                    return candidate.get("trajectory")
+                if "episodes" in candidate:
+                    episodes = candidate.get("episodes")
+                    if isinstance(episodes, list) and episodes:
+                        return episodes[-1]
+            if isinstance(candidate, list):
+                return candidate
+        return args[0]
     return None
 
 
@@ -51,16 +72,16 @@ def grade_hard(*args, **kwargs):
 
     last = trajectory[-1] if isinstance(trajectory[-1], dict) else {}
     info = last.get("info", {}) if isinstance(last, dict) else {}
-    arrived = info.get("total_cars_arrived", 1)
-    if arrived == 0:
-        arrived = 1
-    cleared = info.get("total_cars_cleared", 0)
+    arrived = _safe_float(info.get("total_cars_arrived", 1), default=1.0)
+    if arrived <= 0:
+        arrived = 1.0
+    cleared = _safe_float(info.get("total_cars_cleared", 0), default=0.0)
     throughput = cleared / arrived
 
     base_score = max(0.0, min(1.0, throughput))
 
-    total_emergencies = info.get("total_emergencies_arrived", 0)
-    cleared_under_5 = info.get("emergencies_cleared_under_5", 0)
+    total_emergencies = _safe_float(info.get("total_emergencies_arrived", 0), default=0.0)
+    cleared_under_5 = _safe_float(info.get("emergencies_cleared_under_5", 0), default=0.0)
     emergency_bonus = 0.2 if (total_emergencies > 0 and cleared_under_5 == total_emergencies) else 0.0
     emergency_penalty = -0.3 if info.get("emergency_waited_over_10", False) else 0.0
 

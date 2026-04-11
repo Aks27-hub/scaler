@@ -1,3 +1,6 @@
+import math
+
+
 class EasyTask:
     def __init__(self):
         self.config = {
@@ -24,22 +27,40 @@ def _strict_unit_interval(score: float) -> float:
         numeric = float(score)
     except Exception:
         numeric = 0.5
+    if not math.isfinite(numeric):
+        numeric = 0.5
     return min(high, max(low, numeric))
+
+
+def _safe_float(value, default=0.0):
+    try:
+        numeric = float(value)
+    except Exception:
+        return float(default)
+    if not math.isfinite(numeric):
+        return float(default)
+    return numeric
 
 
 def _extract_trajectory(*args, **kwargs):
     if "trajectory" in kwargs:
         return kwargs.get("trajectory")
+    if "episodes" in kwargs:
+        episodes = kwargs.get("episodes")
+        if isinstance(episodes, list) and episodes:
+            return episodes[-1]
     if args:
-        first = args[0]
-        if isinstance(first, dict):
-            if "trajectory" in first:
-                return first.get("trajectory")
-            if "episodes" in first:
-                episodes = first.get("episodes")
-                if isinstance(episodes, list) and episodes:
-                    return episodes[-1]
-        return first
+        for candidate in args:
+            if isinstance(candidate, dict):
+                if "trajectory" in candidate:
+                    return candidate.get("trajectory")
+                if "episodes" in candidate:
+                    episodes = candidate.get("episodes")
+                    if isinstance(episodes, list) and episodes:
+                        return episodes[-1]
+            if isinstance(candidate, list):
+                return candidate
+        return args[0]
     return None
 
 
@@ -55,7 +76,10 @@ def grade_easy(*args, **kwargs):
     if not isinstance(waits, list) or not waits:
         return _strict_unit_interval(1.0)
 
-    avg_wait = sum(waits) / max(1, len(waits))
+    numeric_waits = [_safe_float(w, default=0.0) for w in waits]
+    if not numeric_waits:
+        return _strict_unit_interval(1.0)
+    avg_wait = sum(numeric_waits) / max(1, len(numeric_waits))
     if avg_wait < 5.0:
         score = 1.0
     elif avg_wait < 10.0:
