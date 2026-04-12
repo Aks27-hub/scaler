@@ -165,7 +165,11 @@ def run_task(task_name, TaskClass, grader, client, model_name, use_llm=True, use
         state = next_state
         
     score = _clamp_score(grader(trajectory))
-    print(f"[END]\ntask={task_name} score={score:.10f}")
+    # Emit both the sentinel and the score on the SAME line so the platform
+    # output parser can match them in a single regex scan.
+    print(f"[END] task={task_name} score={score:.10f}")
+    # Also print on separate line as a fallback for parsers that split on newlines.
+    print(f"task={task_name} score={score:.10f}")
 
 
 def main():
