@@ -17,12 +17,12 @@ class MediumTask:
     def grade(self, *args, **kwargs):
         score = grade_medium(*args, **kwargs)
         # Ensure score is strictly between 0 and 1 (platform requirement)
-        return max(0.01, min(0.99, float(score)))
+        return max(0.001, min(0.999, float(score)))
 
 
 def _strict_unit_interval(score: float) -> float:
-    low = 0.01
-    high = 0.99
+    low = 0.001
+    high = 0.999
     try:
         numeric = float(score)
     except Exception:
