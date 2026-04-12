@@ -22,15 +22,15 @@ class HardTask:
 
 
 def _strict_unit_interval(score: float) -> float:
-    low = 0.001
-    high = 0.999
+    """Clamp score to the open interval (0, 1) — strictly exclusive of both ends."""
+    _EPS = 1e-6
     try:
         numeric = float(score)
     except Exception:
         numeric = 0.5
     if not math.isfinite(numeric):
         numeric = 0.5
-    return min(high, max(low, numeric))
+    return min(1.0 - _EPS, max(_EPS, numeric))
 
 
 def _safe_float(value, default=0.0):
@@ -83,7 +83,8 @@ def _extract_trajectory(*args, **kwargs):
 def grade_hard(*args, **kwargs):
     trajectory = _extract_trajectory(*args, **kwargs)
     if not isinstance(trajectory, list) or not trajectory:
-        return _strict_unit_interval(0.0)
+        # No trajectory data — return a low-but-valid score
+        return _strict_unit_interval(0.05)
 
     last = trajectory[-1] if isinstance(trajectory[-1], dict) else {}
     info = last.get("info", {}) if isinstance(last, dict) else {}
@@ -93,15 +94,23 @@ def grade_hard(*args, **kwargs):
     cleared = _safe_float(info.get("total_cars_cleared", 0), default=0.0)
     throughput = cleared / arrived
 
-    base_score = max(0.0, min(1.0, throughput))
+    # Continuous base score in (0.05, 0.95) — cannot be exactly 0 or 1.
+    # Formula: base = 0.05 + 0.90 * clamp(throughput, 0, 1)
+    base_score = 0.05 + 0.90 * max(0.0, min(1.0, throughput))
 
     total_emergencies = _safe_float(info.get("total_emergencies_arrived", 0), default=0.0)
     cleared_under_5 = _safe_float(info.get("emergencies_cleared_under_5", 0), default=0.0)
-    emergency_bonus = 0.2 if (total_emergencies > 0 and cleared_under_5 == total_emergencies) else 0.0
-    emergency_penalty = -0.3 if info.get("emergency_waited_over_10", False) else 0.0
 
-    final = base_score + emergency_bonus + emergency_penalty
-    return _strict_unit_interval(final)
+    # Proportional adjustments keep score continuous and bounded.
+    # Emergency bonus: +15 % of remaining headroom toward 1 (never reaches 1).
+    if total_emergencies > 0 and cleared_under_5 == total_emergencies:
+        base_score = base_score + 0.15 * (1.0 - base_score)
+
+    # Emergency penalty: reduce to 80 % of current score (never reaches 0).
+    if info.get("emergency_waited_over_10", False):
+        base_score = base_score * 0.80
+
+    return _strict_unit_interval(base_score)
 
 
 def grade(*args, **kwargs):

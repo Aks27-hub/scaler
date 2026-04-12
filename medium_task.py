@@ -21,15 +21,15 @@ class MediumTask:
 
 
 def _strict_unit_interval(score: float) -> float:
-    low = 0.001
-    high = 0.999
+    """Clamp score to the open interval (0, 1) — strictly exclusive of both ends."""
+    _EPS = 1e-6
     try:
         numeric = float(score)
     except Exception:
         numeric = 0.5
     if not math.isfinite(numeric):
         numeric = 0.5
-    return min(high, max(low, numeric))
+    return min(1.0 - _EPS, max(_EPS, numeric))
 
 
 def _safe_float(value, default=0.0):
@@ -82,7 +82,8 @@ def _extract_trajectory(*args, **kwargs):
 def grade_medium(*args, **kwargs):
     trajectory = _extract_trajectory(*args, **kwargs)
     if not isinstance(trajectory, list) or not trajectory:
-        return _strict_unit_interval(0.0)
+        # No trajectory data — return a low-but-valid score
+        return _strict_unit_interval(0.05)
 
     last = trajectory[-1] if isinstance(trajectory[-1], dict) else {}
     info = last.get("info", {}) if isinstance(last, dict) else {}
@@ -90,20 +91,20 @@ def grade_medium(*args, **kwargs):
     if arrived <= 0:
         arrived = 1.0
     cleared = _safe_float(info.get("total_cars_cleared", 0), default=0.0)
-    throughput = cleared / arrived
+    throughput = cleared / arrived  # value in [0, 1] for valid runs
 
-    score = 0.0
-    if throughput > 0.85:
-        score = 1.0
-    elif throughput > 0.65:
-        score = 0.7
-    elif throughput > 0.45:
-        score = 0.4
+    # Continuous interpolation — avoids exact 0 or 1.
+    # Mapping: throughput=1.0 -> ~0.95, throughput=0.85 -> ~0.82,
+    #          throughput=0.65 -> ~0.62, throughput=0.45 -> ~0.40,
+    #          throughput=0   -> ~0.05
+    # Formula: base = 0.05 + 0.90 * throughput  (linear in [0.05, 0.95])
+    raw_score = 0.05 + 0.90 * max(0.0, min(1.0, throughput))
 
+    # Starvation penalty: reduce by 10 % of current score (stays continuous)
     if info.get("starvation_occurred", False):
-        score -= 0.1
+        raw_score *= 0.90
 
-    return _strict_unit_interval(score)
+    return _strict_unit_interval(raw_score)
 
 
 def grade(*args, **kwargs):

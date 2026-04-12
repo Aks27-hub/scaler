@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import re
 import shutil
@@ -8,6 +9,20 @@ from traffic_env import TrafficEnv
 from easy_task import EasyTask, grade_easy
 from medium_task import MediumTask, grade_medium
 from hard_task import HardTask, grade_hard
+
+
+_SCORE_EPS = 1e-6  # Strict open-interval guard used when printing scores
+
+
+def _clamp_score(score) -> float:
+    """Final safety net: guarantee score is strictly in (0, 1) before output."""
+    try:
+        v = float(score)
+    except Exception:
+        v = 0.5
+    if not math.isfinite(v):
+        v = 0.5
+    return min(1.0 - _SCORE_EPS, max(_SCORE_EPS, v))
 
 
 def _to_bool(value, default=False):
@@ -149,12 +164,13 @@ def run_task(task_name, TaskClass, grader, client, model_name, use_llm=True, use
         })
         state = next_state
         
-    score = grader(trajectory)
-    print(f"[END]\ntask={task_name} score={score}")
+    score = _clamp_score(grader(trajectory))
+    print(f"[END]\ntask={task_name} score={score:.10f}")
+
 
 def main():
     api_base_url = _normalize_base_url(os.environ.get("API_BASE_URL", "https://router.huggingface.co/v1"))
-    hf_token = os.environ.get("HF_TOKEN")
+    hf_token = os.environ.get("HF_TOKEN", "")
     model_name = os.environ.get("MODEL_NAME", "meta-llama/Llama-3-8b-chat-hf")
     ollama_model = os.environ.get("OLLAMA_MODEL", "llama3:latest")
     use_llm = _to_bool(os.environ.get("USE_LLM", "true"), default=True)
