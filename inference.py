@@ -152,7 +152,7 @@ def run_task(task_name, TaskClass, grader, client, model_name, use_llm=True, use
         next_state, reward, done, info = env.step(action)
         cleared = info.get("total_cars_cleared", 0)
         arrived = info.get("total_cars_arrived", 1)
-        print(f"[STEP] step={env.steps} action={action} reward={round(reward, 4)} queue={state['cars_per_lane']} cleared={cleared}/{arrived} done={done}")
+        print(f"[STEP] step={env.steps} action={action} reward={round(reward, 2)} done={str(done).lower()} error=null")
         
         trajectory.append({
             "state": state,
