@@ -18,7 +18,7 @@ class HardTask:
     def grade(self, *args, **kwargs):
         score = grade_hard(*args, **kwargs)
         # Ensure score is strictly between 0 and 1 (platform requirement)
-        return max(0.001, min(0.999, float(score)))
+        return _strict_unit_interval(score)
 
 
 def _strict_unit_interval(score: float) -> float:
@@ -43,25 +43,40 @@ def _safe_float(value, default=0.0):
     return numeric
 
 
+def _unwrap_trajectory_payload(payload):
+    # Tolerate nested payload wrappers used by different runners.
+    for _ in range(5):
+        if isinstance(payload, dict):
+            if "trajectory" in payload:
+                payload = payload.get("trajectory")
+                continue
+            if "episodes" in payload:
+                episodes = payload.get("episodes")
+                if isinstance(episodes, list) and episodes:
+                    payload = episodes[-1]
+                    continue
+            break
+        if isinstance(payload, tuple):
+            payload = list(payload)
+            break
+        break
+    return payload
+
+
 def _extract_trajectory(*args, **kwargs):
     if "trajectory" in kwargs:
-        return kwargs.get("trajectory")
+        payload = _unwrap_trajectory_payload(kwargs.get("trajectory"))
+        if isinstance(payload, list):
+            return payload
     if "episodes" in kwargs:
-        episodes = kwargs.get("episodes")
-        if isinstance(episodes, list) and episodes:
-            return episodes[-1]
+        payload = _unwrap_trajectory_payload({"episodes": kwargs.get("episodes")})
+        if isinstance(payload, list):
+            return payload
     if args:
         for candidate in args:
-            if isinstance(candidate, dict):
-                if "trajectory" in candidate:
-                    return candidate.get("trajectory")
-                if "episodes" in candidate:
-                    episodes = candidate.get("episodes")
-                    if isinstance(episodes, list) and episodes:
-                        return episodes[-1]
-            if isinstance(candidate, list):
-                return candidate
-        return args[0]
+            payload = _unwrap_trajectory_payload(candidate)
+            if isinstance(payload, list):
+                return payload
     return None
 
 
